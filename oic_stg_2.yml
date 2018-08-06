@@ -1,0 +1,39 @@
+---
+- hosts: oic_staging_2
+  tasks:
+    - name: Backup Splunk etc/apps prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_apps_backup.tgz /apps/splunk/etc/apps
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git OIC Search Center repository apps to Splunk OIC Search Center Deployer
+      synchronize:
+        src: /data/jenkins/git_repo/OIC_STG_2_Search_Center/
+        dest: /apps/splunk/etc/apps
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+       dest: /apps/splunk/etc/apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+
+    - name: Restart Splunk
+      command: /apps/splunk/bin/splunk restart
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines

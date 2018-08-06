@@ -1,0 +1,52 @@
+---
+- hosts: cis_staging
+  gather_facts: no
+  tasks:
+    - name: Sync Git CIS Staging repository apps to Splunk CIS Staging Server
+      synchronize:
+        mode: pull
+        src: /opt/splunk/etc/apps/
+        dest: /data/jenkins/git_repo/CIS_Staging_Pull_Stub_Apps/
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+          - "--exclude=alert_logevent"
+          - "--exclude=alert_webhook"
+          - "--exclude=appsbrowser"
+          - "--exclude=introspection_generator_addon"
+          - "--exclude=framework"
+          - "--exclude=gettingstarted"
+          - "--exclude=launcher"
+          - "--exclude=learned"
+          - "--exclude=legacy"
+          - "--exclude=lm_all_forwarder_site1_outputs"
+          - "--exclude=lm_all_prod_sh_indexes"
+          - "--exclude=lm_all_search_hardening"
+          - "--exclude=lm_all_search_prefs"
+          - "--exclude=lm_TA_mcafee"
+          - "--exclude=lm_TA_pulse_secure"
+          - "--exclude=sample_app"
+          - "--exclude=search"
+          - "--exclude=splunk_archiver"
+          - "--exclude=SplunkForwarder"
+          - "--exclude=splunk_httpinput"
+          - "--exclude=splunk_instrumentation"
+          - "--exclude=SplunkLightForwarder"
+          - "--exclude=splunk_monitoring_console"
+          - "--exclude=Splunk_SA_CIM"
+          - "--exclude=Splunk_TA_bluecoat-proxysg"
+          - "--exclude=Splunk_TA_checkpoint-opseclea"
+          - "--exclude=Splunk_TA_juniper"
+          - "--exclude=Splunk_TA_nix"
+          - "--exclude=Splunk_TA_paloalto"
+          - "--exclude=Splunk_TA_windows"
+          - "--exclude=TA-Exchange-HubTransport"
+          - "--exclude=TA-Exchange-Mailbox"
+          - "--exclude=TA-Suricata"
+          - "--exclude=user-prefs"

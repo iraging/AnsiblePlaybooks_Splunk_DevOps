@@ -1,0 +1,15 @@
+# Ansible Hosts Example
+
+# CIRT Search Center
+[cirt_deployer]
+cirt_sh_deployer ansible_hosts=123.69.1.100 ansible_user=ec2-user ansble_ssh_private_key_file=/data/pemkeys/PRDDPLKEY.pem
+
+[cirt_sh01]
+cirt_sh_01 ansible_hosts=123.69.1.101 ansible_user=ec2-user ansble_ssh_private_key_file=/data/pemkeys/SECSHDKEY.pem
+
+[cirt_sh02]
+cirt_sh_02 ansible_hosts=123.69.1.101 ansible_user=ec2-user ansble_ssh_private_key_file=/data/pemkeys/SECSHDKEY.pem
+
+[cirt_sh03]
+cirt_sh_03 ansible_hosts=123.69.1.101 ansible_user=ec2-user ansble_ssh_private_key_file=/data/pemkeys/SECSHDKEY.pem
+

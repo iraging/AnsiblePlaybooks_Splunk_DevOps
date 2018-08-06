@@ -1,0 +1,14 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+   - include_vars: awsvars.yml
+   - local_action:
+       module: ec2
+       region: us-gov-west-1
+       aws_access_key: "{{ accesskey }}"
+       aws_secret_key: "{{ secretkey }}"
+       instance_tags:
+           ShutdownOptions: Manual_Anytime
+       state: running
+

@@ -1,0 +1,40 @@
+---
+- hosts: cis_staging
+  tasks:
+    - name: Backup Splunk Apps prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_apps_backup.tgz /opt/splunk/etc/apps 
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git CIRT Staging repository apps to Splunk CIS Staging Server
+      synchronize:
+        src: /data/jenkins/git_repo/CIRT_Staging_Stub_Apps/
+        dest: /opt/splunk/etc/apps
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+       dest: /opt/splunk/etc/apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+
+    - name: Retart Splunk
+      command: /opt/splunk/bin/splunk restart
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines
+

@@ -1,0 +1,112 @@
+---
+- name: Backup Splunk Core Instances
+  hosts: plt_staging, plt_sh01, cis_staging, lmx_search, oic_search
+  gather_facts: no
+  vars:
+    flag: true
+    hostn: "{{ inventory_hostname }}"
+  tasks:
+    - name: Set time variable
+      set_fact:
+        fact_time: "{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+    - debug: var=fact_time
+
+    - name: Set backupfile variable
+      set_fact:
+        backupfile: "splunk_{{ hostn }}_{{ fact_time }}.tgz"
+    - debug: var=backupfile
+    - include_vars: vars.yml
+
+    - name: Ansible Archiver - Backup Splunk
+      archive:
+         path: /opt/splunk/etc
+         dest: /lm_tmp/splunk_backup/{{ backupfile }}
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Copy "{{ backupfile }}" to /data/jenkins/splunk_backup on Jenkins server
+      synchronize:
+        mode: pull
+        src: /lm_tmp/splunk_backup/{{ backupfile }}
+        dest: /data/jenkins/splunk_backup
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+
+    - name: Remove remote backup file after pull
+      file:
+        state: absent
+        path: /lm_tmp/splunk_backup/{{ backupfile }}
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: AWS S3 Bucket upload
+      local_action: "shell /var/lib/jenkins/.local/bin/aws s3 cp /data/jenkins/splunk_backup/{{ backupfile }} s3://enterprise-splunk-backup --profile jenkins_devops_plt"
+#     register: awsstatus
+#   - debug: var=awsstatus.stdout_lines
+
+    - name: Remove local copy of {{ backupfile }} from Jenkins server
+      local_action: "shell rm -rf /data/jenkins/splunk_backup/{{ backupfile }}"
+      register: removecopystatus
+    - debug: var=removecopystatus.stdout_lines
+
+############################################################################
+ 
+- name: Backup Splunk Core Instances ( NEW /apps intall path )
+  hosts: cirt_sh01, cis_sh01
+  gather_facts: no
+  vars:
+    flag: true
+    hostn: "{{ inventory_hostname }}"
+  tasks:
+    - name: Set time variable
+      set_fact:
+        fact_time: "{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+    - debug: var=fact_time
+
+    - name: Set backupfile variable
+      set_fact:
+        backupfile: "splunk_{{ hostn }}_{{ fact_time }}.tgz"
+    - debug: var=backupfile
+    - include_vars: vars.yml
+
+    - name: Ansible Archiver - Backup Splunk
+      archive:
+         path: /apps/splunk/etc
+         dest: /lm_tmp/splunk_backup/{{ backupfile }}
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Copy "{{ backupfile }}" to /data/jenkins/splunk_backup on Jenkins server
+      synchronize:
+        mode: pull
+        src: /lm_tmp/splunk_backup/{{ backupfile }}
+        dest: /data/jenkins/splunk_backup
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+
+    - name: Remove remote backup file after pull
+      file:
+        state: absent
+        path: /lm_tmp/splunk_backup/{{ backupfile }}
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: AWS S3 Bucket upload
+      local_action: "shell /var/lib/jenkins/.local/bin/aws s3 cp /data/jenkins/splunk_backup/{{ backupfile }} s3://enterprise-splunk-backup --profile jenkins_devops_plt"
+#     register: awsstatus
+#   - debug: var=awsstatus.stdout_lines
+
+    - name: Remove local copy of {{ backupfile }} from Jenkins server
+      local_action: "shell rm -rf /data/jenkins/splunk_backup/{{ backupfile }}"
+      register: removecopystatus
+    - debug: var=removecopystatus.stdout_lines
+
+############################################################################

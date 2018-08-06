@@ -1,0 +1,68 @@
+---
+- name: Test Error Handling
+  hosts: plt_staging, cis_staging
+  gather_facts: no
+  vars:
+    flag: true
+    hostn: "{{ inventory_hostname }}"
+# set_fact:
+    tfile: "backup_file_{{ hostn }}.tgz"
+# when: group_names == "plt_staging"
+# set_fact:
+#   tfile: "backup_file_CIS_Staging.tgz"
+# when: group_names == "cis_staging"
+  tasks:
+    - debug: msg="This current host is {{ hostn }}"
+    - debug: msg="This current backup file is {{ tfile }}"
+    - debug: msg="This ansible_host is {{ ansible_host }}"
+    - debug: msg="This ansible_ssh_host is {{ ansible_ssh_host }}"
+    - debug: var=group_names
+    - name: Splunk test show status
+#     command: /opt/splunk/bin/splunk sttus
+      command: /lm_tmp/teststate.sh
+      ignore_errors: yes
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: commandstatus
+    - debug: 
+        var: commandstatus.stdout
+    - name: Set flag
+      set_fact:
+        flag: "failed"
+      when: "'FAILED' in commandstatus.stdout"
+    - debug: var=flag
+    - name: fail the play if one of the tasks failed
+      fail: msg="The execution has failed because of errors."
+      when: flag == "failed"
+#     when: "'error' in commandstatus.stderr"
+
+#- name: CIS Staging
+#  hosts: cis_staging
+#  gather_facts: no
+#  tasks:
+#    - name: Splunk test show status
+#      command: /opt/splunk/bin/splunk status
+#      ignore_errors: yes
+#      become: true
+#      become_method: sudo
+#      become_user: splunk
+#      register: commandstatus
+#    - name: Set flag
+#      set_fact: 
+#        flag: "failed"
+#      when: "'error' in commandstatus.stderr"
+#    - debug: var=commandstatus.stdout_lines
+#
+#   - name: fail the play if the previous command did not succeed
+#     fail: msg="the command failed"
+#     when: "'FAILED' in commandstatus.stderr"
+#
+#- name: Finish
+#  hosts: localhost
+#  gather_facts: no
+#  tasks:
+#    - name: fail the play if one of the tasks failed
+#      fail: msg="The execution has failed because of errors."
+#      when: flag == failed
+#     when: "'error' in commandstatus.stderr"

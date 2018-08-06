@@ -1,0 +1,84 @@
+---
+- hosts: localhost
+  tasks:
+
+    - name: Git clone of PLT Stub Apps repo
+      git:
+        executable: /usr/bin/git
+        repo: https://n6057a:4b9ed009284b83da7581c45bf6b22272adfd2fef@ebs-github.us.lmco.com/LMiNTEL/Platform-Staging-Stub-Apps.git
+        dest: /data/jenkins/git_repo/SHC_Test_Project
+
+    - name: Git clone of Enterprise Splunk Shared Apps repo
+      git:
+        executable: /usr/bin/git
+        repo: https://n6057a:4b9ed009284b83da7581c45bf6b22272adfd2fef@ebs-github.us.lmco.com/LMiNTEL/Enterprise-Splunk-Shared-Apps.git
+        dest: /data/jenkins/git_repo/Enterprise_Splunk_Shared_Apps
+
+    - name: Copy PLT Staggin Apps into deploy directory
+      shell: cp -a /data/jenkins/git_repo/SHC_Test_Project/* /data/jenkins/git_repo/Deploy_Apps
+
+    - name: Copy Enterprise Splunk Shared Apps into deploy directory
+      shell: cp -a /data/jenkins/git_repo/Enterprise_Splunk_Shared_Apps/* /data/jenkins/git_repo/Deploy_Apps
+
+- hosts: plt_staging
+  tasks:
+    - include_vars: vars.yml
+    - name: Backup Splunk apps/ prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_splunk_test_backup.tgz /opt/splunk_test/etc/apps
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git SHC_TEST_Project repository apps to Splunk CIS Test etc apps
+      synchronize:
+        src: /data/jenkins/git_repo/Deploy_Apps/
+        dest: /opt/splunk_test/etc/apps
+        recursive: yes
+        delete: yes
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+          - "--exclude=alert_logevent"
+          - "--exclude=alert_webhook"
+          - "--exclude=appsbrowser"
+          - "--exclude=introspection_generator_addon"
+          - "--exclude=framework"
+          - "--exclude=gettingstarted"
+          - "--exclude=launcher"
+          - "--exclude=learned"
+          - "--exclude=legacy"
+          - "--exclude=sample_app"
+          - "--exclude=search"
+          - "--exclude=splunk_archiver"
+          - "--exclude=SplunkForwarder"
+          - "--exclude=splunk_httpinput"
+          - "--exclude=splunk_instrumentation"
+          - "--exclude=SplunkLightForwarder"
+          - "--exclude=splunk_monitoring_console"
+          - "--exclude=user-prefs"
+ 
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+       dest: /lm_tmp/splunk_test/apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+ 
+    - name: Splunk Apply shcluster-bundle
+      command: /opt/splunk/bin/splunk status --answer-yes -auth {{user}}:{{pass}}
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines
+
+- hosts: localhost
+  tasks:
+    - name: Remove conents of Deploy_Apps directory
+      shell: rm -rf /data/jenkins/git_repo/Deploy_Apps/*

@@ -1,0 +1,26 @@
+---
+- hosts: cis_deployer
+  gather_facts: no
+  tasks:
+    - name: Sync Git OIC Search Center repository TEST
+      synchronize:
+        src: /data/jenkins/git_repo/OIC_Search_Center/
+        dest: /lm_tmp/jenkins_test
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+      become: no
+
+    - name: Splunk test show cluster status
+      command: /opt/splunk/bin/splunk status
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: status
+    - debug: var=status.stdout_lines

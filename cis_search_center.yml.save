@@ -1,0 +1,41 @@
+---
+- hosts: cis_deployer
+  tasks:
+    - include_vars: vars.yml
+    - name: Backup Splunk etc/shcluster/apps prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_shapps_backup.tgz /opt/splunk/etc/shcluster/apps
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git CIS Search Center repository apps to Splunk CIS Search Center Deployer
+      synchronize:
+        src: /data/jenkins/git_repo/CIS_Search_Center/
+        dest: /opt/splunk/etc/shcluster/apps
+        recursive: yes
+        delete: no
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+       dest: /opt/splunk/etc/shcluster/apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+
+    - name: Splunk Apply shcluster-bundle
+      command: /opt/splunk/bin/splunk apply shcluster-bundle -target https://eo-i-3419b710.us.lmco.com:8089 --answer-yes -auth {{user}}:{{pass}}
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines
+

@@ -1,0 +1,95 @@
+---
+- hosts: localhost
+  tasks:
+
+    - name: Git clone of CIS Search Center repo
+      git:
+        executable: /usr/bin/git
+        repo: https://devops_git:550ad3857ff4c8c33158703ba7ebf407768615f7@ebs-github.us.lmco.com/LMiNTEL/CIS-Search-Center.git
+        dest: /data/jenkins/git_repo/CIS_Search_Center
+        version: master
+
+#    - name: Git clone of Enterprise Splunk Shared Apps repo
+#      git:
+#        executable: /usr/bin/git
+#        repo: https://devops_git:550ad3857ff4c8c33158703ba7ebf407768615f7@ebs-github.us.lmco.com/LMiNTEL/Enterprise-Splunk-Shared-Apps.git
+#        dest: /data/jenkins/git_repo/Enterprise_Splunk_Shared_Apps
+#
+#    - name: Copy PLT Staggin Apps into deploy directory
+#      shell: cp -a /data/jenkins/git_repo/CIS_Search_Center/* /data/jenkins/git_repo/Deploy_Apps
+#
+#    - name: Copy Enterprise Splunk Shared Apps into deploy directory
+#      shell: cp -a /data/jenkins/git_repo/Enterprise_Splunk_Shared_Apps/* /data/jenkins/git_repo/Deploy_Apps
+#
+# sync to remote
+
+- hosts: cis_deployer
+  tasks:
+    - include_vars: vars.yml
+    - name: Backup Splunk etc/shcluster/apps prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_shapps_backup.tgz /opt/splunk/etc/shcluster/apps
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git CIS Search Center repository apps to Splunk CIS Search Center Deployer
+      synchronize:
+        src: /data/jenkins/git_repo/CIS_Search_Center/
+        dest: /opt/splunk/etc/shcluster/apps
+        recursive: yes
+        delete: yes
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*template"
+          - "--exclude=alert_logevent"
+          - "--exclude=alert_webhook"
+          - "--exclude=appsbrowser"
+          - "--exclude=introspection_generator_addon"
+          - "--exclude=framework"
+          - "--exclude=gettingstarted"
+          - "--exclude=launcher"
+          - "--exclude=learned"
+          - "--exclude=legacy"
+          - "--exclude=sample_app"
+          - "--exclude=search"
+          - "--exclude=splunk_archiver"
+          - "--exclude=SplunkForwarder"
+          - "--exclude=splunk_httpinput"
+          - "--exclude=splunk_instrumentation"
+          - "--exclude=SplunkLightForwarder"
+          - "--exclude=splunk_monitoring_console"
+          - "--exclude=user-prefs"
+
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+       dest: /opt/splunk/etc/shcluster/apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+
+    - name: Set execute permisions on Nix shell scripts
+      become: yes
+      become_method: sudo
+      file:
+       dest: /opt/splunk/etc/shcluster/apps/Splunk_TA_nix/bin/
+       mode: 0755
+       recurse: yes
+
+    - name: Splunk Apply shcluster-bundle
+      command: /opt/splunk/bin/splunk apply shcluster-bundle -target https://eo-01cf22f29a.us.lmco.com:8089 --answer-yes -auth {{user}}:{{pass}}
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines
+
+#- hosts: localhost
+#  tasks:
+#    - name: Remove conents of Deploy_Apps directory
+#      shell: rm -rf /data/jenkins/git_repo/Deploy_Apps/*

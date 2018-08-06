@@ -1,0 +1,7 @@
+---
+- 
+  tasks:
+    - name: GitHub test revert commit
+    - git:
+        repo: https://ebs-github.us.lmco.com/LMiNTEL/DeploymentServer-Primary.git
+        dest: /data/jenkins/git_repo/GitRevert_Test

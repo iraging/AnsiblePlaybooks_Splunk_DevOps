@@ -1,0 +1,96 @@
+---
+- hosts: localhost
+  tasks:
+
+    - name: Git clone of Deployment Server Primary repo
+      git:
+        executable: /usr/bin/git
+        repo: https://devops_git:550ad3857ff4c8c33158703ba7ebf407768615f7@ebs-github.us.lmco.com/LMiNTEL/DeploymentServer-Primary.git
+        dest: /data/jenkins/git_repo/Deployment_Server_Primary
+        version: master
+
+# sync to remote
+
+- hosts: deployment_servers_primary
+  tasks:
+    - include_vars: vars.yml
+    - name: Backup Splunk etc/deployment-apps and serverclass.conf prior to deployment
+      command: tar czvf /lm_tmp/splunk_backup/splunk_dapps_backup.tgz /opt/splunk/etc/deployment-apps /opt/splunk/etc/system/local/serverclass.conf
+      become: true
+      become_method: sudo
+      become_user: splunk
+
+    - name: Sync Git Deployment Server Primary repository apps to Splunk Deployment Server
+      synchronize:
+#       mode: push
+        src: /data/jenkins/git_repo/Deployment_Server_Primary/
+#       dest: /lm_tmp/splunk_test/deployment-apps
+        dest: /opt/splunk/etc/deployment-apps
+        recursive: yes
+        archive: yes
+        delete: yes
+        rsync_path: "sudo rsync"
+        use_ssh_args: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=*.pyc"
+          - "--exclude=*.md"
+          - "--exclude=*serverclass.conf"
+          - "--exclude=*template"
+
+    - name: Set ownership to splunk:splunk
+      become: yes
+      become_method: sudo
+      file:
+#      dest: /lm_tmp/splunk_test/deployment-apps
+       dest: /opt/splunk/etc/deployment-apps
+       owner: splunk
+       group: splunk
+       recurse: yes
+
+    - name: Set execute permisions on Nix shell scripts
+      become: yes
+      become_method: sudo
+      file:
+#      dest: /lm_tmp/splunk_test/deployment-apps/Splunk_TA_nix/bin/
+       dest: /opt/splunk/etc/deployment-apps/Splunk_TA_nix/bin/
+       mode: 0755
+       recurse: yes
+
+    - name: change system/local direcotry so we can write
+      become: yes
+      become_method: sudo
+      file:
+#      dest: /lm_tmp/splunk_test/local
+       dest: /opt/splunk/etc/system/local
+       mode: 0777
+       recurse: no
+
+    - name: Copy serverclass.conf to etc/system/local on Deployment Servers
+      become: yes
+      become_method: sudo
+      copy:
+        force: yes
+        src: /data/jenkins/git_repo/Deployment_Server_Primary/serverclass.conf
+#       dest: /lm_tmp/splunk_test/local/serverclass.conf
+        dest: /opt/splunk/etc/system/local
+        owner: splunk
+        group: splunk
+
+    - name: change system/local direcotry back to original mode
+      become: yes
+      become_method: sudo
+      file:
+#      dest: /lm_tmp/splunk_test/local
+       dest: /opt/splunk/etc/system/local
+       mode: 0755
+       recurse: no
+ 
+    - name: Splunk Reload Deploy-Server ( TESTING splunk status )
+#     command: /opt/splunk/bin/splunk status
+      command: /opt/splunk/bin/splunk reload deploy-server -auth {{user}}:{{pass}}
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: var=splunkstatus.stdout_lines

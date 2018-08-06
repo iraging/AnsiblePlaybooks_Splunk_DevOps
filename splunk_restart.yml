@@ -1,0 +1,16 @@
+---
+- hosts: "{{ variable_host }}"
+  vars:
+    date: "{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+  tasks:
+    - name: Splunk Restart
+      command: /opt/splunk/bin/splunk restart
+      become: true
+      become_method: sudo
+      become_user: splunk
+      register: splunkstatus
+    - debug: 
+        var: splunkstatus.stdout_lines
+    - debug: var=ansible_date_time
+    - debug: msg="the current date is {{ ansible_date_time.date }}"
+    - debug: msg="The TIME is {{ date }}"
